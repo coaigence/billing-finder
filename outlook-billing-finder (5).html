@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>coaigence | Billing Email Finder</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f1ec; min-height: 100vh; padding: 2rem; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; font-weight: 600; color: #2d1b69; margin-bottom: 0.25rem; letter-spacing: -0.01em; }
+  .subtitle { font-size: 0.85rem; color: #6b6b6b; margin-bottom: 2rem; }
+  .card { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.25rem; border: 0.5px solid #e0dbd0; }
+  .card h2 { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #6b6b6b; margin-bottom: 1rem; }
+  label { display: block; font-size: 0.85rem; color: #444; margin-bottom: 0.4rem; font-weight: 500; }
+  input, select { width: 100%; padding: 0.55rem 0.75rem; border: 0.5px solid #ccc; border-radius: 8px; font-size: 0.9rem; color: #1a1a1a; background: #fafafa; margin-bottom: 1rem; outline: none; transition: border 0.15s; }
+  input:focus, select:focus { border-color: #7f77dd; background: white; }
+  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.6rem 1.2rem; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: #2d1b69; color: white; }
+  .btn-primary:hover { background: #3d2a85; }
+  .btn-primary:disabled { background: #a9a0c8; cursor: not-allowed; }
+  .btn-secondary { background: white; color: #2d1b69; border: 0.5px solid #7f77dd; }
+  .btn-secondary:hover { background: #f0eeff; }
+  .btn-export { background: #1d9e75; color: white; }
+  .btn-export:hover { background: #0f6e56; }
+  .steps { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .step { font-size: 0.75rem; padding: 0.3rem 0.75rem; border-radius: 20px; border: 0.5px solid #e0dbd0; color: #888; background: white; }
+  .step.active { background: #2d1b69; color: white; border-color: #2d1b69; }
+  .step.done { background: #1d9e75; color: white; border-color: #1d9e75; }
+  #status { font-size: 0.85rem; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; display: none; }
+  #status.info { background: #eeedfe; color: #534ab7; border: 0.5px solid #afa9ec; display: block; }
+  #status.error { background: #fcebeb; color: #a32d2d; border: 0.5px solid #f09595; display: block; }
+  #status.success { background: #e1f5ee; color: #0f6e56; border: 0.5px solid #5dcaa5; display: block; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th { text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #888; padding: 0.5rem 0.75rem; border-bottom: 0.5px solid #e0dbd0; }
+  td { padding: 0.6rem 0.75rem; border-bottom: 0.5px solid #f0ede6; vertical-align: top; color: #333; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #faf9f6; }
+  .tag { display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 500; }
+  .tag-invoice { background: #eeedfe; color: #534ab7; }
+  .tag-payment { background: #e1f5ee; color: #0f6e56; }
+  .tag-subscription { background: #faeeda; color: #854f0b; }
+  .tag-receipt { background: #e6f1fb; color: #185fa5; }
+  .tag-billing { background: #fcebeb; color: #a32d2d; }
+  .meta { display: flex; gap: 1rem; font-size: 0.78rem; color: #888; margin-bottom: 1rem; flex-wrap: wrap; }
+  .meta span strong { color: #2d1b69; font-weight: 600; }
+  #results-section { display: none; }
+  .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+  .keyword-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem; }
+  .pill { font-size: 0.78rem; padding: 0.25rem 0.65rem; border-radius: 20px; background: #eeedfe; color: #534ab7; border: 0.5px solid #afa9ec; cursor: pointer; user-select: none; }
+  .pill.active { background: #2d1b69; color: white; border-color: #2d1b69; }
+  .from-col { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .subj-col { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .table-wrap { overflow-x: auto; }
+  #auth-section { display: block; }
+  #search-section { display: none; }
+</style>
+</head>
+<body>
+
+<h1>coaigence | billing email finder</h1>
+<p class="subtitle">Find invoices, payments, subscriptions, and receipts across your Outlook inbox.</p>
+
+<div class="steps">
+  <div class="step active" id="step1">1. connect</div>
+  <div class="step" id="step2">2. search</div>
+  <div class="step" id="step3">3. export</div>
+</div>
+
+<div id="status"></div>
+
+<!-- STEP 1: AUTH -->
+<div class="card" id="auth-section">
+  <h2>Step 1 | Connect your Outlook account</h2>
+  <p style="font-size:0.85rem;color:#555;margin-bottom:1.25rem;line-height:1.6;">This tool uses Microsoft's secure login. Your credentials are never stored here. You will be redirected to Microsoft to sign in, then brought back.</p>
+  <label>Microsoft / Outlook email address</label>
+  <input type="email" id="email-input" placeholder="you@yourdomain.com" />
+  <button class="btn btn-primary" onclick="startAuth()">Connect to Microsoft &rarr;</button>
+  <p style="font-size:0.75rem;color:#aaa;margin-top:0.75rem;">Requires a Microsoft 365 or Outlook.com account. Reads email only. Does not send or delete anything.</p>
+</div>
+
+<!-- STEP 2: SEARCH -->
+<div class="card" id="search-section">
+  <h2>Step 2 | Search your inbox</h2>
+  <label>Filter by keyword type</label>
+  <div class="keyword-pills">
+    <span class="pill active" data-kw="invoice">invoice</span>
+    <span class="pill active" data-kw="payment">payment</span>
+    <span class="pill active" data-kw="subscription">subscription</span>
+    <span class="pill active" data-kw="receipt">receipt</span>
+    <span class="pill active" data-kw="billing">billing</span>
+    <span class="pill active" data-kw="order confirmation">order confirmation</span>
+    <span class="pill active" data-kw="renewal">renewal</span>
+    <span class="pill" data-kw="statement">statement</span>
+    <span class="pill" data-kw="due">due</span>
+    <span class="pill" data-kw="charge">charge</span>
+  </div>
+  <label>Date range</label>
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+    <div style="flex:1;min-width:140px;">
+      <label style="font-size:0.78rem;color:#888;">From</label>
+      <input type="date" id="date-from" />
+    </div>
+    <div style="flex:1;min-width:140px;">
+      <label style="font-size:0.78rem;color:#888;">To</label>
+      <input type="date" id="date-to" />
+    </div>
+  </div>
+  <label>Max results</label>
+  <select id="max-results">
+    <option value="50">50 emails</option>
+    <option value="100" selected>100 emails</option>
+    <option value="250">250 emails</option>
+    <option value="500">500 emails</option>
+  </select>
+  <button class="btn btn-primary" id="search-btn" onclick="runSearch()">Search inbox &rarr;</button>
+</div>
+
+<!-- STEP 3: RESULTS -->
+<div id="results-section">
+  <div class="card">
+    <h2>Results</h2>
+    <div class="meta" id="meta-bar"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>From</th>
+            <th>Subject</th>
+            <th>Type</th>
+            <th>Has attachment</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="btn btn-export" onclick="exportCSV()">Export to CSV</button>
+      <button class="btn btn-secondary" onclick="runSearch()">Search again</button>
+      <button class="btn btn-secondary" onclick="resetAll()">Switch account</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CLIENT_ID = 'b4118628-d456-4bcc-8fc5-da85a4dec6e8';
+const REDIRECT_URI = 'https://coaigence.github.io/billing-finder/';
+const SCOPES = 'openid Mail.Read offline_access';
+let accessToken = null;
+let allResults = [];
+
+function setStatus(msg, type) {
+  const s = document.getElementById('status');
+  s.className = type;
+  s.textContent = msg;
+  if (!msg) s.style.display = 'none';
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById('step' + i);
+    if (i < n) el.className = 'step done';
+    else if (i === n) el.className = 'step active';
+    else el.className = 'step';
+  }
+}
+
+function startAuth() {
+  const email = document.getElementById('email-input').value.trim();
+  if (!email) { setStatus('Please enter your email address first.', 'error'); return; }
+  
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    response_type: 'token',
+    redirect_uri: REDIRECT_URI,
+    scope: SCOPES,
+    login_hint: email,
+    response_mode: 'fragment'
+  });
+  window.location.href = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params}`;
+}
+
+function checkToken() {
+  const hash = window.location.hash;
+  if (hash.includes('access_token')) {
+    const params = new URLSearchParams(hash.substring(1));
+    accessToken = params.get('access_token');
+    window.history.replaceState(null, '', window.location.pathname);
+    document.getElementById('auth-section').style.display = 'none';
+    document.getElementById('search-section').style.display = 'block';
+    setStep(2);
+    setStatus('Connected. Now choose your keywords and date range, then search.', 'success');
+    const today = new Date();
+    const oneYearAgo = new Date(today);
+    oneYearAgo.setFullYear(today.getFullYear() - 1);
+    document.getElementById('date-to').value = today.toISOString().split('T')[0];
+    document.getElementById('date-from').value = oneYearAgo.toISOString().split('T')[0];
+  }
+}
+
+document.querySelectorAll('.pill').forEach(pill => {
+  pill.addEventListener('click', () => pill.classList.toggle('active'));
+});
+
+function getActiveKeywords() {
+  return [...document.querySelectorAll('.pill.active')].map(p => p.dataset.kw);
+}
+
+function detectType(subject) {
+  const s = subject.toLowerCase();
+  if (s.includes('invoice')) return 'invoice';
+  if (s.includes('receipt')) return 'receipt';
+  if (s.includes('subscription') || s.includes('renewal')) return 'subscription';
+  if (s.includes('payment') || s.includes('charge')) return 'payment';
+  return 'billing';
+}
+
+async function runSearch() {
+  const keywords = getActiveKeywords();
+  if (!keywords.length) { setStatus('Select at least one keyword type.', 'error'); return; }
+  if (!accessToken) { setStatus('Not connected. Please go back to Step 1.', 'error'); return; }
+
+  const btn = document.getElementById('search-btn');
+  btn.disabled = true;
+  btn.textContent = 'Searching...';
+  setStatus('Searching your inbox. This may take a moment...', 'info');
+
+  const maxResults = parseInt(document.getElementById('max-results').value);
+  const dateFrom = document.getElementById('date-from').value;
+  const dateTo = document.getElementById('date-to').value;
+
+  const kqParts = keywords.map(k => `"${k}"`).join(" OR ");
+  const url = `https://graph.microsoft.com/v1.0/me/messages?$search=${encodeURIComponent(kqParts)}&$top=${maxResults}&$select=subject,from,receivedDateTime,hasAttachments`;
+
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || 'API error');
+    }
+    const data = await res.json();
+    const subjectKeywords = keywords;
+    const excludeTerms = ["subscribe now","click here to subscribe","free trial","upgrade now","limited time offer","special offer","unsubscribe","was granted access","check this activity","secure your account","important changes to your google","google account and services","security activity","password reset","reset your password","password change","verify your email","confirm your email","account verification"];
+    allResults = (data.value || []).filter(e => { const s = (e.subject || "").toLowerCase(); const hasKw = subjectKeywords.some(k => s.includes(k.toLowerCase())); const noExclude = !excludeTerms.some(t => s.includes(t)); const d = new Date(e.receivedDateTime); const afterFrom = !dateFrom || d >= new Date(dateFrom); const beforeTo = !dateTo || d <= new Date(dateTo + "T23:59:59Z"); return hasKw && noExclude && afterFrom && beforeTo; });
+    renderResults(allResults);
+    setStep(3);
+    setStatus('', '');
+  } catch (e) {
+    setStatus('Error: ' + e.message, 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Search inbox →';
+}
+
+function renderResults(results) {
+  const body = document.getElementById('results-body');
+  body.innerHTML = '';
+  document.getElementById('results-section').style.display = 'block';
+
+  const withAttach = results.filter(r => r.hasAttachments).length;
+  document.getElementById('meta-bar').innerHTML = `
+    <span>Found <strong>${results.length}</strong> emails</span>
+    <span><strong>${withAttach}</strong> with attachments</span>
+  `;
+
+  if (!results.length) {
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:2rem;">No results found. Try different keywords or date range.</td></tr>';
+    return;
+  }
+
+  results.forEach(email => {
+    const type = detectType(email.subject || '');
+    const date = new Date(email.receivedDateTime).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    const from = email.from?.emailAddress?.address || '';
+    const name = email.from?.emailAddress?.name || from;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="white-space:nowrap;font-size:0.8rem;">${date}</td>
+      <td class="from-col" title="${from}">${name}</td>
+      <td class="subj-col" title="${email.subject || ''}">${email.subject || '(no subject)'}</td>
+      <td><span class="tag tag-${type}">${type}</span></td>
+      <td style="text-align:center;">${email.hasAttachments ? '&#10003;' : ''}</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function exportCSV() {
+  if (!allResults.length) return;
+  const rows = [['Date', 'From Name', 'From Email', 'Subject', 'Type', 'Has Attachment']];
+  allResults.forEach(e => {
+    rows.push([
+      new Date(e.receivedDateTime).toLocaleDateString(),
+      e.from?.emailAddress?.name || '',
+      e.from?.emailAddress?.address || '',
+      e.subject || '',
+      detectType(e.subject || ''),
+      e.hasAttachments ? 'Yes' : 'No'
+    ]);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'billing-emails.csv';
+  a.click();
+}
+
+function resetAll() {
+  accessToken = null;
+  allResults = [];
+  document.getElementById('auth-section').style.display = 'block';
+  document.getElementById('search-section').style.display = 'none';
+  document.getElementById('results-section').style.display = 'none';
+  setStep(1);
+  setStatus('', '');
+}
+
+checkToken();
+</script>
+</body>
+</html>
